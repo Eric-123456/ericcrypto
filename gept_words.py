@@ -23,7 +23,7 @@ for aindex, aletter in enumerate(alphabet):
     req = Request(url.format(aletter), headers=headers)
     html = urlopen(req)
     bs_vocab = BeautifulSoup(html.read(), 'html.parser')
-
+    # print(bs_vocab)
     print(f'{aletter}...')
     for windex, wlevel in enumerate(word_levels):
         # 新增 dict
@@ -39,10 +39,12 @@ for aindex, aletter in enumerate(alphabet):
 json_file = 'gept/gept-word.json'
 csv_file  = 'gept/gept-word.csv'
 
-# 寫入 vocab-word.json
-print(json.dumps(vocab_words, sort_keys=True, indent=4), file=open(json_file, 'wt'))
+# 寫入gept-word.json
+with open(json_file, 'wt', encoding='utf-8') as f:
+    print(json.dumps(vocab_words, sort_keys=True, indent=4, ensure_ascii=False), file=f)
+# print(json.dumps(vocab_words, sort_keys=True, indent=4), file=open(json_file, 'wt'))
 
-# 寫入 vocab-word.csv
+# 寫入 gept-word.csv
 word_count = 0
 with open(csv_file, 'w', newline='', encoding='utf8') as vocab_words_csv:
     csvwriter = csv.writer(vocab_words_csv)
@@ -55,4 +57,3 @@ with open(csv_file, 'w', newline='', encoding='utf8') as vocab_words_csv:
 print('Total:', word_count)
 print(json_file)
 print(csv_file)
-    

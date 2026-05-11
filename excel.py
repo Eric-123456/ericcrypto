@@ -10,11 +10,15 @@ url = 'http://localhost:5000/vocab_word_json/{}'
 filename = 'vocab-word-{}.xlsx'
 
 for wl in word_levels.keys():
+    fho = open("gept/gept-word.json")
+    response_data = fho.read()
+    json_data = json.loads(response_data)
+    fho.close()
     # method: post
     # 設定 data 參數即自動調整為 post
-    req = urllib.request.urlopen(url.format(wl), data={})
-    response_data = req.read()
-    json_data = json.loads(response_data)
+    # req = urllib.request.urlopen(url.format(wl), data={})
+    # response_data = req.read()
+    # json_data = json.loads(response_data)
 
     wb = Workbook()
     ws = wb.active
@@ -22,9 +26,10 @@ for wl in word_levels.keys():
     # 設定欄位
     ws.append(column_names)
 
-    for letter in json_data['jsonData']:
-        for word in letter['words']:
-            ws.append(word)
+    for wlevel in json_data:
+        for data in wlevel:
+            for word in data['words']:
+                ws.append(word)
     
     # 設定字型
     font_face = 'Consolas'
