@@ -245,16 +245,9 @@ class Application(Frame):
                     return
 
             if op_mode == 'sign':
-                if os.path.isdir(path):
-                    self.move_folder = f'{self.folder_name}-{self.year}-' + mode
-                    # 建立要移動到的資料夾
-                    # 目前資料夾
-                    self.ecc_folder = self.move_folder
-                else:
-                    # path : file_path
-                    self.create_folder_files(path, '', mode, '', '', op_mode)
-                    return
-
+                # 簽章操作已移至 ecc_signature_files()，此分支已廢棄
+                return
+            
             if not os.path.exists(self.move_folder):
                 os.makedirs(self.move_folder)
 
@@ -272,29 +265,25 @@ class Application(Frame):
         for f in self.dirlist:
             # fullname: 資料夾路徑+裡面資料夾或檔案路徑
             self.fullname = os.path.join(path, f)
-            # new_path:資料夾中的資料夾路徑
-            if op_mode == 'sign':
-                new_path = os.path.join(self.move_folder, f)
-                self.create_folder_files(new_path, self.fullname, mode, self.move_folder, f, op_mode)
-            else:
-                print('full:',self.fullname)
-                if os.path.isdir(self.fullname):
-                    # 建立子資料夾
-                    self.now_folder = self.create_folder(self.fullname, self.move_folder, f)
-                    # print('new:',self.now_folder)
-                    if isprint:
-                        print('{}<{}>'.format(prefix, f))
-                    namelist.append(f'{prefix}<資料夾> {f}')
-                    self.print_files(self.fullname, mode, prefix*2, isprint, namelist, op_mode)
+            # 簽章操作已改至 ecc_signature_files()，此處不再處理
+            print('full:',self.fullname)
+            if os.path.isdir(self.fullname):
+                # 建立子資料夾
+                self.now_folder = self.create_folder(self.fullname, self.move_folder, f)
+                # print('new:',self.now_folder)
+                if isprint:
+                    print('{}<{}>'.format(prefix, f))
+                namelist.append(f'{prefix}<資料夾> {f}')
+                self.print_files(self.fullname, mode, prefix*2, isprint, namelist, op_mode)
 
-                else:
-                    # 建立檔案
-                    print(self.fullname, self.move_folder)
-                    print('now', self.now_folder)
-                    self.create_folder_files(path, self.fullname, mode, self.move_folder, f, op_mode)
-                    if isprint:
-                        print(prefix + f)
-                    namelist.append(f'{prefix}檔案： {f}')
+            else:
+                # 建立檔案
+                print(self.fullname, self.move_folder)
+                print('now', self.now_folder)
+                self.create_folder_files(path, self.fullname, mode, self.move_folder, f, op_mode)
+                if isprint:
+                    print(prefix + f)
+                namelist.append(f'{prefix}檔案： {f}')
 
         return namelist
     
@@ -449,39 +438,6 @@ class Application(Frame):
                     # # print(len(cipher_data))
                     # with open('encrypted_data.pkl','rb') as f:
                     #     self.encrypted_data = pickle.load(f)
-
-        # 執行sign的操作並新增.sig .sha檔案
-        else:
-            # 讀取
-            with open("ecc_private_key.pem", "rb") as f:
-                self.private_key = serialization.load_pem_private_key(
-                        f.read(),
-                        password=None,
-                 )
-            # 如果是檔案，就執行對檔案簽章的操作
-            if os.path.isfile(path):
-                ext = os.path.splitext(self.file_name)[1]
-
-                print('path', path)
-                self.signature ,self.file_sha = self.ecc_signature(path, self.private_key, f='file')
-                sha_path = path.replace(ext, '.sha')
-                file_path = path.replace(ext, '.sig')
-                self.sign_file = file_path
-                print('file_sha: ', self.file_sha)
-                with open(file_path, 'wb') as dest_file:
-                        dest_file.write(self.signature)
-
-                with open(sha_path, 'wb') as dest_file:
-                        dest_file.write(self.file_sha)
-
-            # 如果是資料夾，就執行對資料夾簽章的操作
-            else:
-                self.signature = self.ecc_signature(path, self.private_key, f='folder')
-                self.folder_path = os.path.join(move_folder, self.ecc_folder+'.sig')
-                self.folder_sha = os.path.join(move_folder, self.ecc_folder+'.sha')
-                self.sign_file = self.folder_path
-                with open(self.folder_path, 'wb') as dest_file:
-                        dest_file.write(self.signature)
    
     # 新增aes加密資料夾
     def aes_encrypt_files(self, event=None):
@@ -617,12 +573,25 @@ class Application(Frame):
 
             # mode : ECC
             self.mode = self.tabs.tab(self.tabs.select(), "text")
-            self.files_name = []
+
             if self.folder_path:
-                self.name = self.print_files(self.folder_path, self.mode, isprint=0, namelist=self.files_name, op_mode='sign')
+                # 對資料夾簽章
+                self.signature = self.ecc_signature(self.folder_path, self.ecc_private_key, f='folder')
+                folder_name = os.path.basename(self.folder_path)
+                sig_path = os.path.join(os.path.dirname(self.folder_path), folder_name + '.sig')
+                self.sign_folder = sig_path
+                with open(sig_path, 'wb') as f:
+                    f.write(self.signature)
             
-            if self.file_path:
-                self.name = self.print_files(self.file_path, self.mode, isprint=0, namelist=self.files_name, op_mode='sign')
+            elif self.file_path:
+                # 對檔案簽章
+                ext = os.path.splitext(self.file_name)[1]
+                self.signature, self.file_sha = self.ecc_signature(self.file_path, self.ecc_private_key, f='file')
+                sig_path = self.file_path.replace(ext, '.sig')
+                self.sign_file = sig_path
+                with open(sig_path, 'wb') as f:
+                    f.write(self.signature)
+            
             self.add_ecc_message(mode='sign')
             # 簽章完後路徑清空
             self.folder_path = ''
@@ -643,17 +612,8 @@ class Application(Frame):
                                     self.ecc_public_key_bytes,
                                     backend=default_backend()
                                     )
-            
-            mode = self.tabs.tab(self.tabs.select(), "text")
-            sign_file = os.path.basename(self.folder_path)
-            print(sign_file)
-            # sign_path = os.path.join(f'{sign_file}-{self.year}-{mode}', f'{sign_file}-{self.year}-{mode}.sig')
-            sign_path = os.path.join(f'{sign_file}', f'{sign_file}.sig')
-            print(sign_path)
-            with open(sign_path, 'rb') as f:
-                signature = f.read()
 
-            # 對檔案進行簽章
+            # 對檔案進行驗證
             if self.file_path:
                 new_file_hash = hashlib.sha256()
                 with open(self.file_path, 'rb') as f:
@@ -661,11 +621,15 @@ class Application(Frame):
                         new_file_hash.update(chunk)
                         
                 # 進行驗證
-                self.verify = self.verify_signature(self.ecc_public_key, new_file_hash, signature)
+                self.verify = self.verify_signature(self.ecc_public_key, new_file_hash.digest(), self.signature)
                 self.add_ecc_message(mode='verify')
                 self.file_path = ''
 
             if self.folder_path:
+                sign_path = os.path.join(os.path.dirname(self.folder_path), self.sign_folder)
+                with open(sign_path, 'rb') as f:
+                    signature = f.read()
+
                 new_combined_hash = hashlib.sha256()
                 for root, dirs, files in sorted(os.walk(self.folder_path)):
                     for file in sorted(files):  # 按檔案名稱排序
@@ -791,7 +755,7 @@ class Application(Frame):
                 ec.ECDSA(hashes.SHA256())
             )
 
-            return signature
+            return signature, file_hash.digest()
 
         if f == 'folder':
             combined_hash = hashlib.sha256()
@@ -909,9 +873,9 @@ class Application(Frame):
                 self.txtECCLog.insert('end', '選擇的路徑： '+ self.file_path +'\n')
                 self.txtECCLog.insert('end', '選擇的檔案： '+ self.file_name +'\n')   
             if self.verify:
-                self.txtECCLog.insert('end', '驗證結果： 驗證成功' +'\n')
-            else:
                 self.txtECCLog.insert('end', '驗證結果： 驗證成功，資料無變動' +'\n')
+            else:
+                self.txtECCLog.insert('end', '驗證結果： 驗證失敗，資料有變動' +'\n')
 
     def send_messages(self, event=None):
         print(self.folder_name)
